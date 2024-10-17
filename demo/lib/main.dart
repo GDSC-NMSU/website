@@ -1,125 +1,335 @@
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
+import 'package:lottie/lottie.dart'; // Add Lottie package for animation
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
 
-  // This widget is the root of your application.
+class _MyAppState extends State<MyApp> {
+  bool _isDarkMode = false;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'GDSC Events',
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      home: EventsPage(onThemeChanged: (isDarkMode) {
+        setState(() {
+          _isDarkMode = isDarkMode;
+        });
+      }),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class EventsPage extends StatefulWidget {
+  final Function(bool) onThemeChanged;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  EventsPage({required this.onThemeChanged});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _EventsPageState createState() => _EventsPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _EventsPageState extends State<EventsPage> {
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  bool _isEventDay = false;
+  bool _hasCelebrationPlayed = false; // To control one-time celebration play
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  final Map<DateTime, Map<String, dynamic>> _events = {
+    DateUtils.dateOnly(DateTime.utc(2024, 10, 17)): {
+      'title': 'GDSC Meeting',
+      'icon': Icons.group,
+      'color': Colors.blueAccent,
+      'registrations': 0,
+      'isRegistered': false,
+      'shape': BoxShape.circle,
+      'time': '4:30 PM',
+      'place': 'Science Hall 118',
+    },
+    DateUtils.dateOnly(DateTime.utc(2024, 10, 31)): {
+      'title': 'GDSC Meeting',
+      'icon': Icons.group,
+      'color': Colors.blueAccent,
+      'registrations': 0,
+      'isRegistered': false,
+      'shape': BoxShape.circle,
+      'time': '4:30 PM',
+      'place': 'Science Hall 118',
+    },
+    DateUtils.dateOnly(DateTime.utc(2024, 11, 15)): {
+      'title': 'Programming Competition',
+      'icon': Icons.code,
+      'color': Colors.redAccent,
+      'registrations': 0,
+      'isRegistered': false,
+      'shape': BoxShape.rectangle,
+      'time': '4:30 PM',
+      'place': 'Science Hall 118',
+    },
+  };
+
+
+  List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
+    DateTime onlyDate = DateUtils.dateOnly(day);
+    if (_events.containsKey(onlyDate)) {
+      return [_events[onlyDate]!];
+    }
+    return [];
+  }
+
+  void _showRegistrationDialog(String eventTitle, DateTime eventDate) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        DateTime key = DateUtils.dateOnly(eventDate);
+        bool isRegistered = _events[key]!['isRegistered'];
+        String eventTime = _events[key]!['time'];
+        String eventPlace = _events[key]!['place'];
+
+        return AlertDialog(
+          title: Text('Register for $eventTitle'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Time: $eventTime'),
+              Text('Place: $eventPlace'),
+              SizedBox(height: 10),
+              isRegistered
+                ? Text('You have already registered for this event.')
+                : Text('Would you like to register for this event?'),
+            ],
+          ),
+          actions: isRegistered
+              ? [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('OK'),
+                  ),
+                ]
+              : [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _events[key]!['registrations'] += 1;
+                        _events[key]!['isRegistered'] = true;
+                      });
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Registration confirmed!')));
+                    },
+                    child: Text('Yes'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('No'),
+                  ),
+                ],
+        );
+      },
+    );
+  }
+
+
+  // Celebration widget for event day
+  Widget _celebrateEventDay() {
+    if (_hasCelebrationPlayed) return Container(); // Skip if already played
+
+    _hasCelebrationPlayed = true; // Mark as played
+    return Lottie.asset(
+      '/Users/hathsin/Desktop/GDSC_NEW/demo/assets/celebration.json',
+      repeat: false, // Play only once
+      onLoaded: (composition) {
+        Future.delayed(composition.duration, () {
+          setState(() {
+            _hasCelebrationPlayed = true; // Set this to stop the animation
+          });
+        });
+      },
+    );
+  }
+
+  // Get the next event date
+  DateTime? _getNextEventDate() {
+    DateTime now = DateTime.now();
+    for (DateTime date in _events.keys) {
+      if (date.isAfter(now)) {
+        return date;
+      }
+    }
+    return null;
+    }
+  // Countdown timer for the next event
+  Widget _buildCountdownTimer() {
+    DateTime? nextEventDate = _getNextEventDate();
+    DateTime today = DateUtils.dateOnly(DateTime.now());
+
+    // Check if today is an event day
+    if (_events.containsKey(today)) {
+      // If today is an event day, show the custom message
+      String eventTitle = _events[today]!['title'];
+      return Text(
+        '$eventTitle is happening today!',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      );
+    }
+
+    // Normal countdown for future events
+    if (nextEventDate != null) {
+      int endTime = nextEventDate.millisecondsSinceEpoch;
+      return CountdownTimer(
+        endTime: endTime,
+        widgetBuilder: (_, time) {
+          if (time == null) {
+            return Text(
+              'Next event has started!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            );
+          }
+          return Text(
+            'Next event in: ${time.days ?? 0}d ${time.hours ?? 0}h ${time.min ?? 0}m',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          );
+        },
+      );
+    }
+    return Text('No upcoming events', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    DateTime today = DateUtils.dateOnly(DateTime.now());
+
+    // Check if today is an event day
+    _isEventDay = _events.containsKey(today);
+
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('GDSC Events'),
+        actions: [
+          Switch(
+            value: Theme.of(context).brightness == Brightness.dark,
+            onChanged: (value) {
+              widget.onThemeChanged(value);
+            },
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              // Calendar Display with Event Markers
+              TableCalendar(
+                locale: "en_US",
+                headerStyle: HeaderStyle(formatButtonVisible: false, titleCentered: true),
+                availableGestures: AvailableGestures.all,
+                firstDay: DateTime.utc(2023, 1, 1),
+                lastDay: DateTime.utc(2024, 12, 31),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) {
+                  return isSameDay(_selectedDay, day);
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
+
+                  final events = _getEventsForDay(selectedDay);
+                  if (events.isNotEmpty) {
+                    _showRegistrationDialog(events.first['title'], DateUtils.dateOnly(selectedDay));
+                  }
+                },
+                eventLoader: (day) => _getEventsForDay(day).map((event) => event['title']).toList(),
+                calendarStyle: CalendarStyle(
+                  todayDecoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.lightBlueAccent
+                        : Colors.blueAccent,
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.lightBlue : Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                calendarBuilders: CalendarBuilders(
+                  markerBuilder: (context, day, events) {
+                    if (events.isNotEmpty) {
+                      final event = _getEventsForDay(day);
+                      return Positioned(
+                        bottom: 1,
+                        child: Container(
+                          width: 8.0,
+                          height: 8.0,
+                          decoration: BoxDecoration(
+                            color: event.first['color'],
+                            shape: event.first['shape'],
+                          ),
+                        ),
+                      );
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(16.0),
+                child: _buildCountdownTimer(),
+              ),
+              Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text('Upcoming Events', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: ListView(
+                  children: _events.entries.map((entry) {
+                    DateTime eventDate = entry.key;
+                    Map<String, dynamic> event = entry.value;
+                    return ListTile(
+                      leading: Icon(event['icon']),
+                      title: Text("${event['title']} on ${eventDate.month}/${eventDate.day}"),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Time: ${event['time']}"),
+                          Text("Place: ${event['place']}"),
+                          Text("Registrations: ${event['registrations']}"),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+            ],
+          ),
+          // Show celebration if today is an event day and it hasn't played
+          if (_isEventDay && !_hasCelebrationPlayed)
+            Center(
+              child: Opacity(
+                opacity: 0.7, // Transparent background
+                child: _celebrateEventDay(),
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
