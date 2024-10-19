@@ -15,6 +15,9 @@ dependencies:
   flutter_math_fork: ^0.7.1
   flutter_bootstrap: ^2.0.0
   carousel_slider: ^5.0.0
+  table_calendar: ^3.1.2
+  flutter_countdown_timer: ^4.1.0
+  lottie: ^3.0.0
 
 dev_dependencies:
   flutter_test:
