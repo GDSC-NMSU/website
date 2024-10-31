@@ -1,0 +1,28 @@
+name: pagetrail
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^0.13.5
+  flutter_html: ^3.0.0-alpha.6
+  flutter_layout_grid: ^2.0.1
+  flutter_math_fork: ^0.7.1
+  flutter_bootstrap: ^2.0.0
+  carousel_slider: ^5.0.0
+  table_calendar: ^3.1.2
+  flutter_countdown_timer: ^4.1.0
+  lottie: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
